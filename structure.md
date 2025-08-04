@@ -21,7 +21,7 @@ taskflow-discord-bot/
 │
 └── README.md                      # (Optional) Setup guide, contributor instructions
 
-
+```
 ### `bot.py`
 - The entry point of the bot.
 - Initializes the bot client using `discord.ext.commands.Bot`.
@@ -29,4 +29,3 @@ taskflow-discord-bot/
 - Syncs the slash commands to a development guild.
 - Loads error handling hooks from `utils/error_handler.py`.
 
-```
