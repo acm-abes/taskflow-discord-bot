@@ -1,3 +1,5 @@
+```
+
 taskflow-discord-bot/
 │
 ├── bot.py                         # Main bot launcher and slash command sync
@@ -27,3 +29,4 @@ taskflow-discord-bot/
 - Syncs the slash commands to a development guild.
 - Loads error handling hooks from `utils/error_handler.py`.
 
+```
