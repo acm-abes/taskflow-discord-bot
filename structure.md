@@ -1,31 +1,40 @@
-```
-
 taskflow-discord-bot/
 │
-├── bot.py                         # Main bot launcher and slash command sync
-├── .env                           # Secrets: bot token, DB creds, frontend URL
+├── bot.py                         # Main bot launcher - stateless Discord bot
+├── .env                           # Secrets: bot token, backend API URL
 ├── requirements.txt               # Python dependencies
 │
 ├── commands/                      # All slash command definitions
 │   ├── __init__.py
 │   ├── basic.py                   # /ping, /help
-│   └── auth.py                    # /link command
+│   └── auth.py                    # /link command - passes user ID to backend
 │
-├── services/                      # Backend/DB interaction layer
+├── services/                      # Backend API communication layer
 │   ├── __init__.py
-│   └── db.py                      # PostgreSQL queries for user_links
+│   └── api_client.py              # HTTP client for backend API calls
 │
 ├── utils/                         # Supporting tools
 │   ├── __init__.py
-│   └── error_handler.py           # Central error handling logic
+│   ├── error_handler.py           # Central error handling logic
+│   └── auth_headers.py            # User identity header management
 │
-└── README.md                      # (Optional) Setup guide, contributor instructions
+└── README.md                      # Setup guide, contributor instructions
 
-```
-### `bot.py`
-- The entry point of the bot.
-- Initializes the bot client using `discord.ext.commands.Bot`.
-- Registers slash commands using `discord.app_commands.CommandTree`.
-- Syncs the slash commands to a development guild.
-- Loads error handling hooks from `utils/error_handler.py`.
+## Architecture Overview
+
+### Stateless Bot Design
+- Bot maintains no user state or database connections
+- All user data and authorization handled by backend API
+- User identity passed via headers in API requests
+- Backend resolves user permissions and handles business logic
+
+### API Communication
+- Bot sends user ID and context via headers to backend
+- Backend handles user resolution, authorization, and data persistence
+- Bot simply relays responses back to Discord
+
+### Security
+- User identity passed securely via headers
+- Backend validates Discord user tokens/identity
+- No sensitive data stored in bot
 
