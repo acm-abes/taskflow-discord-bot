@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+STAFF_ROLE_ID = int(os.getenv("STAFF_ROLE_ID"))
+TICKET_CATEGORY_ID = int(os.getenv("TICKET_CATEGORY_ID"))
 
 # Configure logging
 logging.basicConfig(
@@ -43,6 +45,54 @@ async def ping(interaction: discord.Interaction):
 @bot.command(name="ping", help="Check if the bot is responsive.")
 async def ping_message(ctx: commands.Context):
     await ctx.send("Pong!")
+
+@bot.tree.command(name="ticket", description="Create a new support ticket.")
+@app_commands.describe(reason="Reason for opening the ticket")
+async def ticket_slash(interaction: discord.Interaction, reason: str = None):
+    # Defer the response to avoid timeout
+    await interaction.response.defer(ephemeral=True)
+    
+    guild = interaction.guild
+    category = guild.get_channel(TICKET_CATEGORY_ID)
+    ticket_name = f"ticket-{interaction.user.name}".lower()
+
+    existing = discord.utils.get(guild.channels, name=ticket_name)
+    if existing:
+        await interaction.followup.send(f"You already have a ticket: {existing.mention}", ephemeral=True)
+        return
+
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
+
+    staff_role = guild.get_role(STAFF_ROLE_ID)
+    overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+
+    ticket_channel = await guild.create_text_channel(
+        name=ticket_name,
+        category=category,
+        overwrites=overwrites
+    )
+
+    await ticket_channel.send(
+        f"Hello {interaction.user.mention}, will assist you shortly.\n"
+        f"Reason: {reason if reason else 'No reason provided.'}"
+    )
+    await interaction.followup.send(f"Your ticket has been created: {ticket_channel.mention}", ephemeral=True)
+
+@bot.tree.command(name="close", description="Close the current ticket (staff only).")
+async def close_slash(interaction: discord.Interaction):
+    staff_role = interaction.guild.get_role(STAFF_ROLE_ID)
+    if staff_role not in interaction.user.roles:
+        await interaction.response.send_message("You don’t have permission to close tickets.", ephemeral=True)
+        return
+
+    if interaction.channel.name.startswith("ticket-"):
+        await interaction.channel.delete()
+    else:
+        await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+
 
 if __name__ == "__main__":
     if not TOKEN:
