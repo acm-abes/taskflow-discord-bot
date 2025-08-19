@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+TICKET_DATA={}
 TOKEN = os.getenv("DISCORD_TOKEN")
 STAFF_ROLE_ID = int(os.getenv("STAFF_ROLE_ID"))
 TICKET_CATEGORY_ID = int(os.getenv("TICKET_CATEGORY_ID"))
@@ -54,12 +55,10 @@ async def ticket_slash(interaction: discord.Interaction, reason: str = None):
     
     guild = interaction.guild
     category = guild.get_channel(TICKET_CATEGORY_ID)
-    ticket_name = f"ticket-{interaction.user.name}".lower()
+    
 
-    existing = discord.utils.get(guild.channels, name=ticket_name)
-    if existing:
-        await interaction.followup.send(f"You already have a ticket: {existing.mention}", ephemeral=True)
-        return
+    import time
+    ticket_name = f"ticket-{interaction.user.name}-{int(time.time())}".lower()
 
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -92,6 +91,53 @@ async def close_slash(interaction: discord.Interaction):
         await interaction.channel.delete()
     else:
         await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+
+@bot.tree.command(name="assign",description="Assign a user to this ticket.")
+@app_commands.describe(member="Member to assign to the ticket")
+async def assign_slash(interaction: discord.Interaction, member: discord.Member):
+    if not interaction.channel.name.startswith("ticket-"):
+        return await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+    
+    TICKET_DATA.setdefault(interaction.channel.id,{})["assigned_to"]=member.id
+    await interaction.response.send_message(f"Ticket assigned to {member.mention}.")
+
+@bot.tree.command(name="deadline", description="Set a deadline for this ticket.")
+@app_commands.describe(date="Deadline in YYYY-MM-DD format")
+async def deadline_slash(interaction: discord.Interaction,date: str):
+    if not interaction.channel.name.startswith("ticket-"):
+        return await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+    
+    TICKET_DATA.setdefault(interaction.channel.id,{})["deadline"] = date
+    await interaction.response.send_message(f"Deadline set to {date}.")
+
+@bot.tree.command(name="setcategory", description="Set a category for this ticket.")
+@app_commands.describe(category="Category or tag for the ticket")
+async def setcategory_slash(interaction: discord.Interaction,category: str):
+    if not interaction.channel.name.startswith("ticket-"):
+        return await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+    
+    TICKET_DATA.setdefault(interaction.channel.id,{})["category"]= category
+    await interaction.response.send_message(f"Category set to **{category}**.")
+
+@bot.tree.command(name="info", description="Get info about this ticket.")
+async def info_slash(interaction: discord.Interaction):
+    if not interaction.channel.name.startswith("ticket-"):
+        return await interaction.response.send_message("This command can only be used in a ticket channel.", ephemeral=True)
+     
+    data = TICKET_DATA.get(interaction.channel.id)
+    if not data:
+        return await interaction.response.send_message("No data found for this ticket.", ephemeral=True)
+    
+    assigned = f"<@{data['assigned_to']}>" if data.get("assigned_to") else "Unassigned"
+    deadline = data.get("deadline", "None")
+    category = data.get("category", "None")
+
+    embed = discord.Embed(title="Ticket Info")
+    embed.add_field(name="Assigned To", value=assigned, inline=False)
+    embed.add_field(name="Deadline", value=deadline, inline=False)
+    embed.add_field(name="Category", value=category, inline=False)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 if __name__ == "__main__":
